@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поймай квадрат</title>
+    <style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #222;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    #game {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    #square {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: #ff3b30;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    #score {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        z-index: 10;
+    }
+
+    #start-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #222;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        color: white;
+    }
+
+    #start-screen h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    #start-btn {
+        padding: 20px 60px;
+        font-size: 28px;
+        background: #ff3b30;
+        color: white;
+        border: none;
+        border-radius: 16px;
+        cursor: pointer;
+    }
+
+    #start-btn:active {
+        transform: scale(0.95);
+    }
+    #timer {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+#shop-screen, #gameover-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(20, 20, 20, 0.98);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    color: white;
+    padding: 20px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+#shop-screen h2, #gameover-screen h1 {
+    font-size: 36px;
+    margin-bottom: 20px;
+}
+
+#shop-coins {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #ffd700;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+    background: #333;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    font-size: 18px;
+}
+
+.shop-item .buy-btn {
+    background: #ff3b30;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.shop-item .buy-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+.shop-item .buy-btn.bought {
+    background: #2ecc71;
+}
+
+#close-shop-btn, #shop-btn, #restart-btn {
+    background: #ff3b30;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 22px;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
+#shop-btn {
+    background: #ffd700;
+    color: #222;
+}
+
+#gameover-screen p {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+<div id="game">
+    <div id="score">Очки: 0</div>
+    <div id="timer">Время: 30</div>
+    <div id="square"></div>
+
+    <div id="start-screen">
+        <h1>Поймай квадрат 🟥</h1>
+        <button id="start-btn">Начать игру</button>
+    </div>
+
+    <div id="shop-screen" style="display: none;">
+        <h2>🛒 Магазин улучшений</h2>
+        <div id="shop-coins">У тебя очков: 0</div>
+
+        <div class="shop-item" data-upgrade="size">
+            <span>🟥 Больше квадрат</span>
+            <button class="buy-btn" data-cost="10">Купить (10)</button>
+        </div>
+        <div class="shop-item" data-upgrade="time">
+            <span>⏱ Бонус времени (+5 сек)</span>
+            <button class="buy-btn" data-cost="15">Купить (15)</button>
+        </div>
+        <div class="shop-item" data-upgrade="double">
+            <span>✨ Двойные очки</span>
+            <button class="buy-btn" data-cost="25">Купить (25)</button>
+        </div>
+        <div class="shop-item" data-upgrade="magnet">
+            <span>🎯 Магнит</span>
+            <button class="buy-btn" data-cost="40">Купить (40)</button>
+        </div>
+
+        <button id="close-shop-btn">Продолжить игру</button>
+    </div>
+
+    <div id="gameover-screen" style="display: none;">
+        <h1>Время вышло!</h1>
+        <p id="final-score">Твой результат: 0</p>
+        <button id="shop-btn">🛒 Магазин</button>
+        <button id="restart-btn">Играть снова</button>
+    </div>
+</div>
+<script>
+
+    // === ЭЛЕМЕНТЫ ===
+    const square = document.getElementById('square');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const startScreen = document.getElementById('start-screen');
+    const startBtn = document.getElementById('start-btn');
+    const shopScreen = document.getElementById('shop-screen');
+    const shopCoins = document.getElementById('shop-coins');
+    const closeShopBtn = document.getElementById('close-shop-btn');
+    const gameoverScreen = document.getElementById('gameover-screen');
+    const finalScoreEl = document.getElementById('final-score');
+    const shopBtn = document.getElementById('shop-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    // === СОСТОЯНИЕ ИГРЫ ===
+    let score = 0;              // очки в текущем раунде
+    let totalCoins = 0;         // накопленные очки для магазина
+    let timeLeft = 30;
+    let gameActive = false;
+    let timerInterval = null;
+
+    // === УЛУЧШЕНИЯ (сохраняются в localStorage) ===
+    let upgrades = {
+        size: 0,      // уровень "Больше квадрат"
+        time: 0,      // уровень "Бонус времени"
+        double: 0,    // уровень "Двойные очки"
+        magnet: 0     // уровень "Магнит"
+    };
+
+    // === ЗАГРУЗКА СОХРАНЕНИЙ ===
+    function loadProgress() {
+        const saved = localStorage.getItem('catchSquareProgress');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                upgrades = data.upgrades || upgrades;
+                totalCoins = data.totalCoins || 0;
+            } catch (e) {
+                console.log('Ошибка загрузки, начинаем с нуля');
+            }
+        }
+    }
+
+    // === СОХРАНЕНИЕ ПРОГРЕССА ===
+    function saveProgress() {
+        localStorage.setItem('catchSquareProgress', JSON.stringify({
+            upgrades: upgrades,
+            totalCoins: totalCoins
+        }));
+    }
+
+    // === ПРИМЕНЕНИЕ УЛУЧШЕНИЙ ===
+    function applyUpgrades() {
+        // Больше квадрат: +15px за уровень, максимум 3 уровня
+        const sizeBonus = upgrades.size * 15;
+        const baseSize = 80;
+        square.style.width = (baseSize + sizeBonus) + 'px';
+        square.style.height = (baseSize + sizeBonus) + 'px';
+    }
+
+    // === СТАРТОВЫЙ РАЗМЕР КВАДРАТА ===
+    const BASE_SIZE = 80;
+
+    // === ПЕРЕМЕЩЕНИЕ КВАДРАТА ===
+    function moveSquare() {
+        const size = square.offsetWidth;
+        const maxX = window.innerWidth - size;
+        const maxY = window.innerHeight - size;
+
+        let randomX = Math.floor(Math.random() * maxX);
+        let randomY = Math.floor(Math.random() * maxY);
+
+        // Магнит: если куплен, квадрат прыгает ближе к центру
+        if (upgrades.magnet > 0) {
+            const centerX = window.innerWidth / 2 - size / 2;
+            const centerY = window.innerHeight / 2 - size / 2;
+            const strength = upgrades.magnet * 0.15; // 15% за уровень
+            randomX = randomX + (centerX - randomX) * strength;
+            randomY = randomY + (centerY - randomY) * strength;
+        }
+
+        square.style.left = randomX + 'px';
+        square.style.top = randomY + 'px';
+    }
+
+    // === КЛИК ПО КВАДРАТУ ===
+    function catchSquare() {
+        if (!gameActive) return;
+
+        // Двойные очки: +2 за уровень (максимум +2)
+        const pointsPerCatch = 1 + (upgrades.double > 0 ? 1 : 0);
+        score += pointsPerCatch;
+        scoreEl.textContent = 'Очки: ' + score;
+
+        square.style.transform = 'scale(0.5)';
+        setTimeout(() => {
+            square.style.transform = 'scale(1)';
+        }, 100);
+
+        moveSquare();
+    }
+
+    // === СТАРТ ИГРЫ ===
+    function startGame() {
+        score = 0;
+        scoreEl.textContent = 'Очки: 0';
+
+        // Бонус времени: +5 сек за уровень
+        const bonusTime = upgrades.time * 5;
+        timeLeft = 30 + bonusTime;
+        timerEl.textContent = 'Время: ' + timeLeft;
+
+        gameActive = true;
+        startScreen.style.display = 'none';
+        gameoverScreen.style.display = 'none';
+        shopScreen.style.display = 'none';
+        square.style.display = 'block';
+
+        applyUpgrades();
+        moveSquare();
+
+        // Запускаем таймер
+        clearInterval(timerInterval);
+        timerInterval = setInterval(function() {
+            timeLeft--;
+            timerEl.textContent = 'Время: ' + timeLeft;
+
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    // === КОНЕЦ ИГРЫ ===
+    function endGame() {
+        gameActive = false;
+        clearInterval(timerInterval);
+        square.style.display = 'none';
+
+        // Начисляем очки в общий банк
+        totalCoins += score;
+        saveProgress();
+
+        finalScoreEl.textContent = 'Твой результат: ' + score + ' очков';
+        gameoverScreen.style.display = 'flex';
+    }
+
+    // === ОТКРЫТИЕ МАГАЗИНА ===
+    function openShop() {
+        gameoverScreen.style.display = 'none';
+        startScreen.style.display = 'none';
+        shopScreen.style.display = 'flex';
+        updateShopUI();
+    }
+
+    // === ОБНОВЛЕНИЕ ИНТЕРФЕЙСА МАГАЗИНА ===
+    function updateShopUI() {
+        shopCoins.textContent = 'У тебя очков: ' + totalCoins;
+
+        const buyButtons = document.querySelectorAll('.buy-btn');
+        buyButtons.forEach(function(btn) {
+            const upgradeType = btn.parentElement.dataset.upgrade;
+            const cost = parseInt(btn.dataset.cost);
+            const level = upgrades[upgradeType];
+            const maxLevel = 3;
+
+            if (level >= maxLevel) {
+                btn.textContent = 'Максимум ✅';
+                btn.disabled = true;
+                btn.classList.add('bought');
+            } else if (totalCoins >= cost) {
+                btn.textContent = 'Купить (' + cost + ')';
+                btn.disabled = false;
+                btn.classList.remove('bought');
+            } else {
+                btn.textContent = 'Не хватает (' + cost + ')';
+                btn.disabled = true;
+                btn.classList.remove('bought');
+            }
+        });
+    }
+
+    // === ПОКУПКА УЛУЧШЕНИЯ ===
+    function buyUpgrade(upgradeType, cost) {
+        if (totalCoins < cost) return;
+        if (upgrades[upgradeType] >= 3) return;
+
+        totalCoins -= cost;
+        upgrades[upgradeType]++;
+
+        saveProgress();
+        updateShopUI();
+        applyUpgrades();
+
+        // Небольшая визуальная вспышка
+        const btn = document.querySelector('.shop-item[data-upgrade="' + upgradeType + '"] .buy-btn');
+        if (btn) {
+            btn.style.transform = 'scale(1.1)';
+            setTimeout(function() {
+                btn.style.transform = 'scale(1)';
+            }, 150);
+        }
+    }
+
+    // === ЗАКРЫТИЕ МАГАЗИНА (и старт нового раунда) ===
+    function closeShop() {
+        shopScreen.style.display = 'none';
+        startGame();
+    }
+
+    // === СОБЫТИЯ ===
+    square.addEventListener('click', catchSquare);
+    square.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        catchSquare();
+    });
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+    shopBtn.addEventListener('click', openShop);
+    closeShopBtn.addEventListener('click', closeShop);
+
+    // Обработка кнопок покупки
+    document.querySelectorAll('.buy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const upgradeType = btn.parentElement.dataset.upgrade;
+            const cost = parseInt(btn.dataset.cost);
+            buyUpgrade(upgradeType, cost);
+        });
+    });
+
+    window.addEventListener('resize', function() {
+        if (gameActive) moveSquare();
+    });
+
+    // === ИНИЦИАЛИЗАЦИЯ ===
+    loadProgress();
+    applyUpgrades();
+    square.style.display = 'none';
+</script>
+</body>
+</html>
